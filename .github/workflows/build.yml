@@ -32,12 +32,33 @@ jobs:
       - name: Package NOVAURA
         shell: pwsh
         run: |
-          python -m PyInstaller --noconfirm --clean --windowed --onedir --name NOVAURA --paths src --add-data "src/novaura/assets;novaura/assets" --collect-all minecraft_launcher_lib --collect-all keyring src/novaura/__main__.py
+          python -m pip install pillow
+          python tools/create_icon.py
+          python -m PyInstaller --noconfirm --clean --windowed --onedir --name NOVAURA --icon src/novaura/assets/novaura.ico --paths src --add-data "src/novaura/assets;novaura/assets" --collect-all minecraft_launcher_lib --collect-all keyring src/novaura/__main__.py
           Compress-Archive -Path "dist/NOVAURA/*" -DestinationPath "dist/NOVAURA-Windows.zip" -Force
-      - name: Upload Windows artifact
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (!(Test-Path $iscc)) {
+            choco install innosetup --yes --no-progress
+          }
+          if (!(Test-Path $iscc)) {
+            throw "Inno Setup compiler was not found."
+          }
+      - name: Build setup installer
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          & $iscc /Qp installer/NOVAURA.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (!(Test-Path "dist/NOVAURA-Setup.exe")) { throw "NOVAURA-Setup.exe was not created." }
+      - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
         with:
           name: NOVAURA-Windows
-          path: dist/NOVAURA-Windows.zip
+          path: |
+            dist/NOVAURA-Windows.zip
+            dist/NOVAURA-Setup.exe
           if-no-files-found: error
           retention-days: 14

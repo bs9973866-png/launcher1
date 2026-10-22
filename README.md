@@ -42,15 +42,23 @@ Alternatively, install the package with pip install -e . and start it with pytho
 
 Every push to main and each manual workflow run triggers **Build NOVAURA for Windows** in GitHub Actions. Open the repository's Actions tab, select a successful run, and download the NOVAURA-Windows artifact. The archive contains the packaged application directory; extract it before running NOVAURA.exe.
 
-To make a build locally:
+To make a portable build locally:
 
 ~~~powershell
-pip install -r requirements.txt
-pip install pyinstaller
-python -m PyInstaller --noconfirm --clean --windowed --onedir --name NOVAURA --paths src --add-data "src/novaura/assets;novaura/assets" --collect-all minecraft_launcher_lib --collect-all keyring src/novaura/__main__.py
+pip install -r requirements.txt pyinstaller pillow
+python tools/create_icon.py
+python -m PyInstaller --noconfirm --clean --windowed --onedir --name NOVAURA --icon src/novaura/assets/novaura.ico --paths src --add-data "src/novaura/assets;novaura/assets" --collect-all minecraft_launcher_lib --collect-all keyring src/novaura/__main__.py
+Compress-Archive -Path "dist/NOVAURA/*" -DestinationPath "dist/NOVAURA-Windows.zip" -Force
 ~~~
 
-The output is placed in dist/NOVAURA/. Distribute the whole folder or archive it; do not send only the EXE.
+The output folder is dist/NOVAURA/. Distribute the whole folder or ZIP; do not send only NOVAURA.exe. To also build the traditional Windows setup installer, install Inno Setup 6 and run:
+
+~~~powershell
+choco install innosetup --yes
+& "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" installer\NOVAURA.iss
+~~~
+
+This creates dist/NOVAURA-Setup.exe. The GitHub Actions build publishes both NOVAURA-Windows.zip and NOVAURA-Setup.exe.
 
 ## Microsoft login configuration
 

@@ -8,7 +8,7 @@ from typing import Any, Callable
 
 import requests
 from PySide6.QtCore import Qt, QSize, QPropertyAnimation, QEasingCurve, QUrl
-from PySide6.QtGui import QDesktopServices, QFont
+from PySide6.QtGui import QDesktopServices, QFont, QIcon
 from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtWidgets import (
     QApplication, QCheckBox, QComboBox, QFileDialog, QFrame, QGridLayout,
@@ -101,6 +101,7 @@ class MainWindow(QMainWindow):
                 log.exception("Unable to create initial offline profile")
         self.setObjectName("mainWindow")
         self.setWindowTitle("NOVAURA Launcher")
+        self.setWindowIcon(QIcon(str(asset_path("novaura-mark.svg"))))
         self.setMinimumSize(1040, 700)
         self.resize(1390, 880)
         self.setStyleSheet(stylesheet(self.config))
