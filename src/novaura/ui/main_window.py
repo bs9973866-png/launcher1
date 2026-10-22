@@ -13,7 +13,7 @@ from PySide6.QtGui import QDesktopServices, QFont, QIcon
 from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtWidgets import (
     QApplication, QCheckBox, QComboBox, QFileDialog, QFrame, QGridLayout,
-    QHBoxLayout, QLabel, QLineEdit, QMainWindow, QMessageBox, QProgressBar,
+    QHBoxLayout, QLabel, QLineEdit, QListWidget, QListWidgetItem, QMainWindow, QMessageBox, QProgressBar,
     QPushButton, QScrollArea, QSlider, QSpinBox, QStackedWidget, QVBoxLayout,
     QWidget, QInputDialog, QDialog, QFormLayout, QDialogButtonBox, QPlainTextEdit
 )
@@ -486,6 +486,7 @@ class MainWindow(QMainWindow):
         label_row.addWidget(title_block(self.text("active_instance"), self.text("launch_hint")))
         label_row.addStretch(1)
         label_row.addWidget(self._button("↻  " + self.text("refresh"), False, self.refresh_versions_async))
+        label_row.addWidget(self._button("◫  Менеджер версий", False, self.open_version_manager))
         layout.addLayout(label_row)
 
         settings_card = make_card()
@@ -573,6 +574,129 @@ class MainWindow(QMainWindow):
         self.active_instance()["loader"] = loader
         self.active_instance()["installed_version"] = ""
         self.save()
+
+    def _is_version_installed(self, version_id: str) -> bool:
+        root = Path(self.active_instance().get("game_dir") or game_root())
+        version_dir = root / "versions" / version_id
+        return (version_dir / f"{version_id}.json").is_file() and (version_dir / f"{version_id}.jar").is_file()
+
+    def open_version_manager(self) -> None:
+        """Browse the Mojang manifest dynamically and filter releases, snapshots and legacy versions."""
+        if not self.versions:
+            self.refresh_versions_async()
+            QMessageBox.information(self, "NOVAURA", "Список версий загружается. Открой менеджер снова, когда загрузка завершится.")
+            return
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Менеджер версий Minecraft")
+        dialog.resize(660, 610)
+        layout = QVBoxLayout(dialog)
+        layout.addWidget(QLabel("Выбери версию из официального манифеста. Скачивание начнётся только после запуска выбранной сборки."))
+        controls = QHBoxLayout()
+        search = QLineEdit()
+        search.setPlaceholderText("Поиск версии, например 1.20.4 или 25w...")
+        filter_combo = QComboBox()
+        filter_combo.addItems(["Все версии", "Релизы", "Снимки", "Исторические", "Установленные"])
+        controls.addWidget(search, 2)
+        controls.addWidget(filter_combo, 1)
+        layout.addLayout(controls)
+        items = QListWidget()
+        items.setMinimumHeight(340)
+        layout.addWidget(items, 1)
+        info = QLabel("Выбери версию из списка.")
+        info.setProperty("class", "subtitle")
+        info.setWordWrap(True)
+        layout.addWidget(info)
+        buttons = QHBoxLayout()
+        choose_button = QPushButton("Выбрать")
+        launch_button = QPushButton("Выбрать и запустить")
+        launch_button.setObjectName("primary")
+        cancel_button = QPushButton("Закрыть")
+        buttons.addWidget(choose_button)
+        buttons.addWidget(launch_button)
+        buttons.addStretch(1)
+        buttons.addWidget(cancel_button)
+        layout.addLayout(buttons)
+        launch_after = {"value": False}
+
+        def version_kind(version: dict[str, Any]) -> str:
+            return str(version.get("type", "release")).lower()
+
+        def refresh_list(*_args) -> None:
+            items.clear()
+            query = search.text().strip().casefold()
+            selected_filter = filter_combo.currentText()
+            for version in self.versions:
+                version_id = str(version.get("id", ""))
+                kind = version_kind(version)
+                installed = self._is_version_installed(version_id)
+                if query and query not in version_id.casefold():
+                    continue
+                if selected_filter == "Релизы" and kind != "release":
+                    continue
+                if selected_filter == "Снимки" and kind != "snapshot":
+                    continue
+                if selected_filter == "Исторические" and kind not in {"old_release", "old_alpha", "old_beta"}:
+                    continue
+                if selected_filter == "Установленные" and not installed:
+                    continue
+                labels = {
+                    "release": "Релиз",
+                    "snapshot": "Snapshot",
+                    "old_release": "Старый релиз",
+                    "old_alpha": "Alpha",
+                    "old_beta": "Beta",
+                }
+                suffix = " · Установлена" if installed else ""
+                item = QListWidgetItem(f"{version_id}  ·  {labels.get(kind, kind)}{suffix}")
+                item.setData(Qt.ItemDataRole.UserRole, version_id)
+                item.setData(Qt.ItemDataRole.UserRole + 1, version)
+                items.addItem(item)
+            if items.count():
+                items.setCurrentRow(0)
+            else:
+                info.setText("По заданному фильтру версии не найдены.")
+
+        def show_info(item: QListWidgetItem | None = None) -> None:
+            item = item or items.currentItem()
+            if not item:
+                return
+            version = item.data(Qt.ItemDataRole.UserRole + 1) or {}
+            version_id = str(version.get("id", ""))
+            info.setText(
+                f"Версия: {version_id}\n"
+                f"Тип: {version.get('type', 'unknown')}\n"
+                f"Дата манифеста: {version.get('releaseTime', 'не указана')}\n"
+                f"Статус: {'установлена' if self._is_version_installed(version_id) else 'будет загружена при запуске'}"
+            )
+
+        search.textChanged.connect(refresh_list)
+        filter_combo.currentTextChanged.connect(refresh_list)
+        items.currentItemChanged.connect(lambda current, previous: show_info(current))
+        items.itemDoubleClicked.connect(lambda item: dialog.accept())
+        choose_button.clicked.connect(dialog.accept)
+        cancel_button.clicked.connect(dialog.reject)
+        def choose_and_launch():
+            launch_after["value"] = True
+            dialog.accept()
+        launch_button.clicked.connect(choose_and_launch)
+        refresh_list()
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        selected = items.currentItem()
+        if not selected:
+            QMessageBox.information(self, "NOVAURA", "Сначала выбери версию.")
+            return
+        version_id = str(selected.data(Qt.ItemDataRole.UserRole))
+        instance = self.active_instance()
+        instance["minecraft_version"] = version_id
+        instance["installed_version"] = ""
+        self.save()
+        if self.home_version_combo.findText(version_id) < 0:
+            self.home_version_combo.insertItem(0, version_id)
+        self.home_version_combo.setCurrentText(version_id)
+        self._set_status(f"Выбрана Minecraft {version_id}")
+        if launch_after["value"]:
+            self.launch_active_instance()
 
     def build_instances_page(self) -> QWidget:
         content, layout = self._page_content()
