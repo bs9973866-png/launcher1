@@ -1,4 +1,5 @@
 from pathlib import Path
+import os
 import tempfile
 
 from novaura.config import default_config, make_instance, slugify
@@ -42,3 +43,22 @@ def test_instance_export_import_roundtrip():
         manifest = import_instance(str(archive), str(target))
         assert manifest["instance"]["name"] == "Sample"
         assert (target / "mods" / "test.jar").read_bytes() == b"not a real mod"
+
+
+def test_main_window_constructs_without_network(monkeypatch):
+    monkeypatch.setenv("QT_QPA_PLATFORM", "offscreen")
+    with tempfile.TemporaryDirectory() as temp:
+        monkeypatch.setenv("APPDATA", temp)
+        from PySide6.QtWidgets import QApplication
+        from novaura.ui.main_window import MainWindow
+
+        app = QApplication.instance() or QApplication([])
+        monkeypatch.setattr(MainWindow, "refresh_versions_async", lambda self: None)
+        window = MainWindow(default_config())
+        try:
+            assert window.windowTitle() == "NOVAURA Launcher"
+            assert window.stack.count() == 7
+            assert set(window._pages) == {"home", "instances", "mods", "resources", "optimize", "accounts", "settings"}
+        finally:
+            window.close()
+            app.processEvents()
