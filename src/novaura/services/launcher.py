@@ -146,7 +146,7 @@ def launch_instance(
     jvm_args = [f"-Xms{min(2, ram)}G", f"-Xmx{ram}G"]
     if account.get("type") == "ely":
         injector = ensure_authlib_injector(report)
-        jvm_args.insert(0, f'-javaagent:"{injector}"=ely.by')
+        jvm_args.insert(0, f'-javaagent:"{injector}"=https://authserver.ely.by')
     custom_args = str(config.get("jvm_arguments", "")).strip()
     if custom_args:
         extra = shlex.split(custom_args, posix=False)
