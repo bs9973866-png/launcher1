@@ -92,3 +92,8 @@ pytest
 ~~~
 
 The GitHub Actions workflow runs the tests and builds a packaged Windows artifact. A successful workflow is the build verification; it does not replace testing actual Microsoft/Ely.by credentials on the end user's system.
+
+
+## Version manager
+
+The main page includes a version manager with search and filters for releases, snapshots, historical alpha/beta versions and installed versions. It reads IDs dynamically from the Mojang manifest, marks versions installed only when the version JSON and JAR exist in the selected instance, and delegates installation to the existing launcher path when the user launches that version.
