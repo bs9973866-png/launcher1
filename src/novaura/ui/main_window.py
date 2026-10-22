@@ -8,6 +8,7 @@ from typing import Any, Callable
 
 import requests
 from PySide6.QtCore import Qt, QSize, QPropertyAnimation, QEasingCurve, QUrl
+from PySide6.QtMultimedia import QAudioOutput, QMediaPlayer
 from PySide6.QtGui import QDesktopServices, QFont, QIcon
 from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtWidgets import (
@@ -84,6 +85,11 @@ class MainWindow(QMainWindow):
     def __init__(self, config: dict[str, Any], parent=None):
         super().__init__(parent)
         self.config = config
+        self._audio_output = QAudioOutput(self)
+        self._audio_output.setVolume(float(config.get("sound_volume", 0.75)))
+        self._sound_player = QMediaPlayer(self)
+        self._sound_player.setAudioOutput(self._audio_output)
+        self._sound_player.mediaStatusChanged.connect(self._sound_media_status_changed)
         self.store = AccountStore()
         self.versions: list[dict[str, Any]] = []
         self.version_combos: list[QComboBox] = []
@@ -108,6 +114,27 @@ class MainWindow(QMainWindow):
         self.setWindowOpacity(float(self.config.get("window_opacity", 1.0)))
         self.rebuild_ui()
         self.refresh_versions_async()
+        self.play_sound("welcome.mp3")
+
+    def _sound_media_status_changed(self, status) -> None:
+        # Stop cleanly at end; keep the player reusable for the next event sound.
+        if status == QMediaPlayer.MediaStatus.EndOfMedia:
+            self._sound_player.stop()
+
+    def play_sound(self, name: str) -> None:
+        """Play an optional bundled UI sound without ever blocking launcher actions."""
+        try:
+            if not bool(self.config.get("sounds_enabled", True)):
+                return
+            path = asset_path(name)
+            if not path.is_file():
+                log.debug("Optional sound asset not found: %s", path)
+                return
+            self._sound_player.stop()
+            self._sound_player.setSource(QUrl.fromLocalFile(str(path)))
+            self._sound_player.play()
+        except Exception:
+            log.exception("Unable to play NOVAURA sound: %s", name)
 
     def text(self, key: str) -> str:
         return tr(self._language, key)
@@ -678,6 +705,7 @@ class MainWindow(QMainWindow):
         )
 
     def _launch_completed(self, result: dict[str, str]) -> None:
+        self.play_sound("launch.mp3")
         self.save()
         self.home_play_button.setEnabled(True)
         QMessageBox.information(
