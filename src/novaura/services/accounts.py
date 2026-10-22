@@ -141,7 +141,8 @@ class AccountStore:
 
         class CallbackHandler(BaseHTTPRequestHandler):
             def do_GET(self) -> None:
-                request_url = f"{redirect_uri}{self.path}" if "?" in self.path else f"{redirect_uri}?{self.path.lstrip('/')}"
+                base_url = f"{parsed_redirect.scheme}://{parsed_redirect.netloc}"
+                request_url = base_url + self.path
                 if urlparse(self.path).path != callback_path:
                     self.send_response(404)
                     self.end_headers()
@@ -185,6 +186,7 @@ class AccountStore:
             "uuid": data["id"],
             "type": "microsoft",
             "provider": "Microsoft",
+            "skin_url": str((data.get("skins") or [{}])[0].get("url") or "").replace("http://", "https://", 1),
         }
         secrets = {
             "access_token": data["access_token"],

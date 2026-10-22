@@ -1,13 +1,18 @@
 from __future__ import annotations
 
+import hashlib
 import logging
 import shlex
 import shutil
 import subprocess
 from pathlib import Path
 from typing import Any, Callable
+from urllib.parse import urlparse
 
 import minecraft_launcher_lib
+import requests
+
+from novaura.config import app_data_dir
 
 log = logging.getLogger(__name__)
 Progress = Callable[[str, int], None]
@@ -38,6 +43,49 @@ def _callbacks(report: Progress) -> dict[str, Callable]:
         report("Загрузка файлов Minecraft", percent)
 
     return {"setStatus": set_status, "setMax": set_max, "setProgress": set_progress}
+
+
+
+def ensure_authlib_injector(report: Progress) -> Path:
+    """Download authlib-injector and verify its published SHA-256 when available."""
+    destination = app_data_dir() / "libraries" / "authlib-injector.jar"
+    if destination.is_file() and destination.stat().st_size > 50_000:
+        return destination
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    report("Загрузка authlib-injector для Ely.by…", 0)
+    metadata_url = "https://authlib-injector.yushi.moe/artifact/latest.json"
+    response = requests.get(metadata_url, timeout=20, headers={"User-Agent": "NOVAURA-Launcher/0.1.0"})
+    response.raise_for_status()
+    metadata = response.json()
+    download_url = str(metadata.get("download_url") or "")
+    if not download_url.startswith("https://") or urlparse(download_url).hostname != "authlib-injector.yushi.moe":
+        raise RuntimeError("Authlib-injector вернул недопустимый адрес загрузки.")
+    expected_hash = str((metadata.get("checksums") or {}).get("sha256") or "").lower()
+    temporary = destination.with_suffix(".jar.part")
+    try:
+        with requests.get(download_url, stream=True, timeout=(15, 60),
+                          headers={"User-Agent": "NOVAURA-Launcher/0.1.0"}) as file_response:
+            file_response.raise_for_status()
+            total = int(file_response.headers.get("Content-Length", "0") or 0)
+            downloaded = 0
+            digest = hashlib.sha256()
+            with temporary.open("wb") as stream:
+                for chunk in file_response.iter_content(256 * 1024):
+                    event = getattr(report, "cancel_event", None)
+                    if event is not None and event.is_set():
+                        raise InterruptedError("Операция отменена.")
+                    if chunk:
+                        stream.write(chunk)
+                        digest.update(chunk)
+                        downloaded += len(chunk)
+                        report("Скачивание authlib-injector", int(downloaded * 100 / total) if total else -1)
+        if expected_hash and digest.hexdigest().lower() != expected_hash:
+            raise RuntimeError("Контрольная сумма authlib-injector не совпала.")
+        temporary.replace(destination)
+    except Exception:
+        temporary.unlink(missing_ok=True)
+        raise
+    return destination
 
 
 def launch_instance(
@@ -96,6 +144,9 @@ def launch_instance(
     token = str(credentials.get("access_token") or "0")
     ram = max(2, min(32, int(config.get("ram_gb", 4))))
     jvm_args = [f"-Xms{min(2, ram)}G", f"-Xmx{ram}G"]
+    if account.get("type") == "ely":
+        injector = ensure_authlib_injector(report)
+        jvm_args.insert(0, f'-javaagent:"{injector}"=ely.by')
     custom_args = str(config.get("jvm_arguments", "")).strip()
     if custom_args:
         extra = shlex.split(custom_args, posix=False)

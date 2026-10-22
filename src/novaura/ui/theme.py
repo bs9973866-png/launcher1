@@ -40,10 +40,10 @@ def stylesheet(config: dict[str, Any]) -> str:
     QFrame[role="hero"] {{ background: qlineargradient(x1:0,y1:0,x2:1,y2:1,stop:0 #27122e,stop:0.55 #21152f,stop:1 #11101b); border: 1px solid {accent}; border-radius: {radius + 4}px; }}
     QFrame[role="soft"] {{ background: rgba(31, 23, 43, 230); border: 1px solid {border}; border-radius: {radius}px; }}
     QLabel {{ background: transparent; }}
-    QLabel.muted {{ color: {muted}; }}
-    QLabel.eyebrow {{ color: {accent}; font-size: 10pt; font-weight: 800; letter-spacing: 2px; }}
-    QLabel.pageTitle {{ font-size: 23pt; font-weight: 750; }}
-    QLabel.subtitle {{ color: {muted}; font-size: 10pt; }}
+    QLabel[class="muted"] {{ color: {muted}; }}
+    QLabel[class="eyebrow"] {{ color: {accent}; font-size: 10pt; font-weight: 800; letter-spacing: 2px; }}
+    QLabel[class="pageTitle"] {{ font-size: 23pt; font-weight: 750; }}
+    QLabel[class="subtitle"] {{ color: {muted}; font-size: 10pt; }}
     QPushButton {{ background: {raised}; border: 1px solid {border}; border-radius: 12px; padding: 10px 15px; font-size: 10pt; font-weight: 600; }}
     QPushButton:hover {{ background: #2b2039; border-color: {accent}; }}
     QPushButton:pressed {{ background: #3b2248; }}

@@ -10,7 +10,7 @@ The launcher uses the PKCE helpers in minecraft-launcher-lib and opens the syste
 
 ## Ely.by
 
-Ely.by login uses its Yggdrasil-compatible authentication endpoint. The launcher never writes the account password to disk. The access token is stored with the OS keyring. Authentication and skin/session endpoints may require the compatible authlib-injector agent in the Minecraft JVM; behavior must be verified against the Ely.by protocol and selected Minecraft version.
+Ely.by login uses its Yggdrasil-compatible authentication endpoint. The launcher never writes the account password to disk. The access token is stored with the OS keyring. The launcher downloads authlib-injector from its official artifact metadata endpoint, checks the published SHA-256 when provided, and adds its Java agent argument for Ely.by game sessions. Verify behavior on the selected Minecraft version.
 
 ## CurseForge
 

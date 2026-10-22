@@ -22,7 +22,7 @@ from novaura.i18n import tr
 from novaura.services.accounts import AccountStore
 from novaura.services.files import export_instance, import_instance, import_pack_file, open_managed_folder
 from novaura.services.launcher import available_versions, launch_instance, loader_ids
-from novaura.services.modrinth import search_modrinth, search_curseforge, download_project, install_curseforge_project
+from novaura.services.modrinth import search_modrinth, search_curseforge, download_project, install_curseforge_project, install_modrinth_modpack
 from novaura.ui.skin_preview import SkinCubeWidget
 from novaura.ui.theme import PALETTES, stylesheet
 from novaura.workers import TaskWorker
@@ -88,6 +88,7 @@ class MainWindow(QMainWindow):
         self.versions: list[dict[str, Any]] = []
         self.version_combos: list[QComboBox] = []
         self.workers: list[TaskWorker] = []
+        self.current_worker: TaskWorker | None = None
         self.result_cards: list[QWidget] = []
         self.skin_widget: SkinCubeWidget | None = None
         self._pages: dict[str, QWidget] = {}
@@ -236,9 +237,13 @@ class MainWindow(QMainWindow):
         self.progress.setValue(0)
         self.progress.setTextVisible(False)
         self.progress.setVisible(False)
+        self.cancel_button = QPushButton("Отменить")
+        self.cancel_button.setVisible(False)
+        self.cancel_button.clicked.connect(self.cancel_current_task)
         bottom_layout.addWidget(QLabel("●"))
         bottom_layout.addWidget(self.status_label, 1)
         bottom_layout.addWidget(self.progress)
+        bottom_layout.addWidget(self.cancel_button)
         right.addWidget(bottom)
         base.addLayout(right, 1)
         self.setCentralWidget(center)
@@ -267,6 +272,21 @@ class MainWindow(QMainWindow):
             animation.setEasingCurve(QEasingCurve.Type.OutCubic)
             animation.start()
             self._page_animation = animation
+
+    def cancel_current_task(self) -> None:
+        worker = self.current_worker
+        if worker and worker.isRunning():
+            worker.cancel()
+            self._set_status("Запрошена отмена…", -1)
+
+    def _task_finished(self, worker: TaskWorker) -> None:
+        if worker in self.workers:
+            self.workers.remove(worker)
+        if self.current_worker is worker:
+            active = [item for item in self.workers if item.isRunning()]
+            self.current_worker = active[-1] if active else None
+        if hasattr(self, "cancel_button"):
+            self.cancel_button.setVisible(any(item.isRunning() for item in self.workers))
 
     def _page_content(self) -> tuple[QWidget, QVBoxLayout]:
         widget = QWidget()
@@ -362,11 +382,16 @@ class MainWindow(QMainWindow):
         self._set_status(title, 0)
 
         worker = TaskWorker(task, self)
+        self.current_worker = worker
         self.workers.append(worker)
+        if hasattr(self, "cancel_button"):
+            self.cancel_button.setVisible(True)
         worker.progress.connect(self._set_status)
 
         def succeeded(result: Any) -> None:
             self._set_status(self.text("status_ready"), -1)
+            if hasattr(self, "home_play_button"):
+                self.home_play_button.setEnabled(True)
             if on_success:
                 try:
                     on_success(result)
@@ -376,13 +401,18 @@ class MainWindow(QMainWindow):
                         QMessageBox.critical(self, "NOVAURA", str(exc))
 
         def failed(message: str) -> None:
-            self._set_status(f"Ошибка: {message}", -1)
-            if show_error:
-                QMessageBox.critical(self, "NOVAURA", message)
+            if message == "Операция отменена.":
+                self._set_status("Операция отменена", -1)
+            else:
+                self._set_status(f"Ошибка: {message}", -1)
+                if show_error:
+                    QMessageBox.critical(self, "NOVAURA", message)
+            if hasattr(self, "home_play_button"):
+                self.home_play_button.setEnabled(True)
 
         worker.succeeded.connect(succeeded)
         worker.failed.connect(failed)
-        worker.finished.connect(lambda: self.workers.remove(worker) if worker in self.workers else None)
+        worker.finished.connect(lambda w=worker: self._task_finished(w))
         worker.start()
 
     def _set_active_instance(self, instance_id: str) -> None:
@@ -787,15 +817,29 @@ class MainWindow(QMainWindow):
             QMessageBox.information(self, "NOVAURA", "Большинству модов нужен загрузчик. Переключи сборку на Fabric, Forge, NeoForge или Quilt.")
             self.navigate("instances")
             return
+        if project_type == "modpack" and source == "CurseForge":
+            QMessageBox.information(self, "NOVAURA", "Установка CurseForge-модпаков через manifest пока не поддерживается. Modrinth-модпаки импортируются целиком.")
+            return
         def perform(report):
+            if project_type == "modpack" and source == "Modrinth":
+                return install_modrinth_modpack(project, instance, report)
             if source == "CurseForge":
                 return install_curseforge_project(project, instance, project_type, report)
             return download_project(project, instance, project_type, report)
         self._start_task(
             f"Установка {project.get('title') or project.get('name') or 'проекта'}…",
             perform,
-            on_success=lambda path: QMessageBox.information(self, "NOVAURA", f"Файл установлен:\n{path}"),
+            on_success=lambda path: self._project_install_complete(path, project_type),
         )
+
+    def _project_install_complete(self, path: Any, project_type: str) -> None:
+        if project_type == "modpack":
+            self.save()
+            self.rebuild_ui()
+            self.navigate("instances")
+            QMessageBox.information(self, "NOVAURA", f"Модпак импортирован в сборку «{self.active_instance().get('name')}».\nПроверь загрузчик и запусти игру.")
+        else:
+            QMessageBox.information(self, "NOVAURA", f"Файл установлен:\n{path}")
 
     def build_resources_page(self) -> QWidget:
         content, layout = self._page_content()
