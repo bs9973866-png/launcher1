@@ -1,0 +1,5 @@
+PySide6>=6.8,<7
+minecraft-launcher-lib>=8.0,<9
+requests>=2.31
+keyring>=25.2
+pytest>=8.0

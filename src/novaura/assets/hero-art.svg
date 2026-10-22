@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="330" viewBox="0 0 560 330">
+<defs>
+ <linearGradient id="nebula" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ff419c" stop-opacity=".85"/><stop offset=".52" stop-color="#9b4dff" stop-opacity=".6"/><stop offset="1" stop-color="#40e4de" stop-opacity=".25"/></linearGradient>
+ <linearGradient id="block" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffd0ef"/><stop offset=".4" stop-color="#d247ff"/><stop offset="1" stop-color="#5e2a9a"/></linearGradient>
+ <radialGradient id="planet"><stop stop-color="#ffadd7"/><stop offset=".55" stop-color="#c43fff"/><stop offset="1" stop-color="#3a1d5a"/></radialGradient>
+ <filter id="glow"><feGaussianBlur stdDeviation="8"/></filter>
+</defs>
+<circle cx="390" cy="157" r="95" fill="#d93dff" opacity=".24" filter="url(#glow)"/>
+<circle cx="393" cy="150" r="75" fill="url(#planet)" stroke="#ff95d6" stroke-width="1.5"/>
+<path d="M326 142 Q385 120 456 145 M322 160 Q389 139 459 165 M345 96 Q386 125 433 208" fill="none" stroke="#ffbbe8" stroke-opacity=".48" stroke-width="2"/>
+<ellipse cx="390" cy="157" rx="126" ry="31" fill="none" stroke="#ff64bc" stroke-width="8" transform="rotate(-19 390 157)" opacity=".8"/>
+<ellipse cx="390" cy="157" rx="124" ry="28" fill="none" stroke="#261b44" stroke-width="2" transform="rotate(-19 390 157)" opacity=".7"/>
+<g transform="translate(180 107)">
+ <path d="M0 20 L46 0 L92 22 L45 46 Z" fill="#f8b4ff"/>
+ <path d="M0 20 L45 46 L45 98 L0 72 Z" fill="#a447e8"/>
+ <path d="M45 46 L92 22 L92 71 L45 98 Z" fill="#642a9d"/>
+ <path d="M14 26 L27 20 L27 36 L14 42 Z M39 40 L50 34 L50 50 L39 56 Z M64 29 L77 23 L77 38 L64 45 Z" fill="#41195f"/>
+ <path d="M9 70 L20 65 L20 80 L9 86 Z M30 81 L41 76 L41 91 L30 96 Z" fill="#f14fbd"/>
+</g>
+<g transform="translate(352 225) rotate(-12)">
+ <path d="M0 0 L52 -23 L91 0 L39 27 Z" fill="#f8c7ee"/>
+ <path d="M0 0 L39 27 L39 79 L0 51 Z" fill="#bd41da"/>
+ <path d="M39 27 L91 0 L91 51 L39 79 Z" fill="#63258f"/>
+ <path d="M13 8 L24 2 L24 16 L13 22 Z M30 21 L39 16 L39 30 L30 35 Z M54 23 L65 18 L65 33 L54 38 Z M72 11 L83 6 L83 20 L72 25 Z" fill="#37154f"/>
+</g>
+<g fill="url(#block)">
+ <path d="M75 205 l20 -10 20 10 -20 11z M75 205 v24 l20 12 v-25z M95 216 l20 -11 v24 l-20 12z"/>
+ <path d="M462 61 l16 -8 16 8 -16 9z M462 61 v18 l16 9 V70z M478 70 l16 -9 v18 l-16 9z"/>
+</g>
+<g stroke="#ff91db" stroke-width="2" stroke-linecap="round" fill="none">
+ <path d="M85 71 l5 -14 5 14 14 5 -14 5 -5 14 -5 -14 -14 -5z"/>
+ <path d="M278 35 l4 -12 4 12 12 4 -12 4 -4 12 -4 -12 -12 -4z"/>
+ <path d="M493 205 l3 -9 3 9 9 3 -9 3 -3 9 -3 -9 -9 -3z"/>
+ <path d="M135 270 l3 -8 3 8 8 3 -8 3 -3 8 -3 -8 -8 -3z"/>
+</g>
+<g fill="#ffb0e3">
+ <circle cx="70" cy="117" r="2"/><circle cx="163" cy="52" r="2"/><circle cx="241" cy="239" r="2"/><circle cx="286" cy="298" r="2"/><circle cx="515" cy="120" r="2"/><circle cx="444" cy="274" r="2"/><circle cx="129" cy="180" r="1.5"/><circle cx="309" cy="71" r="1.5"/>
+</g>
+<path d="M36 280 Q120 248 168 287 T289 273" fill="none" stroke="url(#nebula)" stroke-width="4" stroke-linecap="round" opacity=".7"/>
+</svg>

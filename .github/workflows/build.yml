@@ -1,0 +1,43 @@
+name: Build NOVAURA for Windows
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt pyinstaller
+      - name: Run tests
+        env:
+          PYTHONPATH: src
+        run: python -m pytest -q
+      - name: Package NOVAURA
+        shell: pwsh
+        run: |
+          python -m PyInstaller --noconfirm --clean --windowed --onedir --name NOVAURA --paths src --add-data "src/novaura/assets;novaura/assets" --collect-all minecraft_launcher_lib --collect-all keyring src/novaura/__main__.py
+          Compress-Archive -Path "dist/NOVAURA/*" -DestinationPath "dist/NOVAURA-Windows.zip" -Force
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: NOVAURA-Windows
+          path: dist/NOVAURA-Windows.zip
+          if-no-files-found: error
+          retention-days: 14
