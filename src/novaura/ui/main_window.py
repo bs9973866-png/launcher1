@@ -182,7 +182,7 @@ class MainWindow(QMainWindow):
         footer_layout.setContentsMargins(12, 12, 12, 12)
         version_label = QLabel("NOVAURA  •  v0.1.0")
         version_label.setStyleSheet("font-weight: 800;")
-        hint = QLabel("Сделано для твоей игры")
+        hint = QLabel(self.text("footer_tagline"))
         hint.setProperty("class", "subtitle")
         footer_layout.addWidget(version_label)
         footer_layout.addWidget(hint)
@@ -238,7 +238,7 @@ class MainWindow(QMainWindow):
         self.progress.setValue(0)
         self.progress.setTextVisible(False)
         self.progress.setVisible(False)
-        self.cancel_button = QPushButton("Отменить")
+        self.cancel_button = QPushButton(self.text("cancel"))
         self.cancel_button.setVisible(False)
         self.cancel_button.clicked.connect(self.cancel_current_task)
         bottom_layout.addWidget(QLabel("●"))
@@ -278,7 +278,7 @@ class MainWindow(QMainWindow):
         worker = self.current_worker
         if worker and worker.isRunning():
             worker.cancel()
-            self._set_status("Запрошена отмена…", -1)
+            self._set_status(self.text("cancel_requested"), -1)
 
     def _task_finished(self, worker: TaskWorker) -> None:
         if worker in self.workers:
@@ -403,9 +403,9 @@ class MainWindow(QMainWindow):
 
         def failed(message: str) -> None:
             if message == "Операция отменена.":
-                self._set_status("Операция отменена", -1)
+                self._set_status(self.text("cancelled_status"), -1)
             else:
-                self._set_status(f"Ошибка: {message}", -1)
+                self._set_status(self.text("error_prefix").format(message=message), -1)
                 if show_error:
                     QMessageBox.critical(self, "NOVAURA", message)
             if hasattr(self, "home_play_button"):
@@ -494,9 +494,9 @@ class MainWindow(QMainWindow):
         lower.setHorizontalSpacing(12)
         lower.setVerticalSpacing(12)
         features = [
-            ("01", "Fabric / Forge / NeoForge", "Раздельные профили и свои папки игры", "instances"),
-            ("02", "Modrinth + CurseForge", "Подбор модов под версию сборки", "mods"),
-            ("03", "Ресурсы", "Ресурс-паки и шейдеры отдельно от сборок", "resources"),
+            ("01", "Fabric / Forge / NeoForge", self.text("feature1_detail"), "instances"),
+            ("02", "Modrinth + CurseForge", self.text("feature2_detail"), "mods"),
+            ("03", self.text("feature3_title"), self.text("feature3_detail"), "resources"),
         ]
         for index, (number, title, detail, destination) in enumerate(features):
             card = make_card()
@@ -509,7 +509,7 @@ class MainWindow(QMainWindow):
             desc = QLabel(detail)
             desc.setProperty("class", "subtitle")
             desc.setWordWrap(True)
-            jump = self._button("Открыть  →", False, lambda checked=False, p=destination: self.navigate(p))
+            jump = self._button(self.text("open_action"), False, lambda checked=False, p=destination: self.navigate(p))
             box.addWidget(num)
             box.addWidget(heading)
             box.addWidget(desc, 1)
@@ -549,7 +549,7 @@ class MainWindow(QMainWindow):
 
     def build_instances_page(self) -> QWidget:
         content, layout = self._page_content()
-        layout.addWidget(title_block(self.text("nav_instances"), "Создавай независимые игровые сборки с разными версиями и загрузчиками."))
+        layout.addWidget(title_block(self.text("nav_instances"), self.text("instances_intro")))
         create_card = make_card()
         box = QVBoxLayout(create_card)
         box.setContentsMargins(18, 17, 18, 18)
@@ -608,8 +608,8 @@ class MainWindow(QMainWindow):
             play = self._button("▶  " + self.text("launch"), True, lambda checked=False, iid=instance["id"]: self.activate_and_launch(iid))
             buttons.addWidget(play, 2)
             if not is_active:
-                buttons.addWidget(self._button("Выбрать", False, lambda checked=False, iid=instance["id"]: self._set_active_instance(iid)), 1)
-            buttons.addWidget(self._button("Папка", False, lambda checked=False, it=instance: self._open_instance_folder(it)), 1)
+                buttons.addWidget(self._button(self.text("choose_instance"), False, lambda checked=False, iid=instance["id"]: self._set_active_instance(iid)), 1)
+            buttons.addWidget(self._button(self.text("instance_folder"), False, lambda checked=False, it=instance: self._open_instance_folder(it)), 1)
             if len(self.config["instances"]) > 1:
                 buttons.addWidget(self._button("×", False, lambda checked=False, iid=instance["id"]: self.remove_instance(iid)), 0)
             inner.addLayout(buttons)
@@ -637,9 +637,9 @@ class MainWindow(QMainWindow):
 
     def remove_instance(self, instance_id: str) -> None:
         if len(self.config.get("instances", [])) <= 1:
-            QMessageBox.information(self, "NOVAURA", "Нельзя удалить последнюю сборку.")
+            QMessageBox.information(self, "NOVAURA", self.text("no_delete_last"))
             return
-        answer = QMessageBox.question(self, "NOVAURA", "Удалить сборку из списка? Файлы на диске останутся.")
+        answer = QMessageBox.question(self, "NOVAURA", self.text("confirm_delete_instance"))
         if answer != QMessageBox.StandardButton.Yes:
             return
         self.config["instances"] = [item for item in self.config["instances"] if item.get("id") != instance_id]
@@ -668,7 +668,7 @@ class MainWindow(QMainWindow):
             self.navigate("accounts")
             return
         if account.get("type") != "offline" and not (account.get("credentials") or {}).get("access_token"):
-            QMessageBox.warning(self, "NOVAURA", "Токен аккаунта недоступен. Удалите этот профиль и войдите снова.")
+            QMessageBox.warning(self, "NOVAURA", self.text("invalid_account_token"))
             return
         self.home_play_button.setEnabled(False)
         self._start_task(
@@ -688,7 +688,7 @@ class MainWindow(QMainWindow):
 
     def build_mods_page(self) -> QWidget:
         content, layout = self._page_content()
-        layout.addWidget(title_block(self.text("nav_mods"), "Поиск контента по выбранной версии сборки. Совместимость проверяется перед установкой."))
+        layout.addWidget(title_block(self.text("nav_mods"), self.text("mods_intro")))
         search_card = make_card()
         box = QVBoxLayout(search_card)
         box.setContentsMargins(16, 15, 16, 15)
@@ -706,13 +706,13 @@ class MainWindow(QMainWindow):
         row.addWidget(self.mod_type, 1)
         row.addWidget(self.mod_search_button)
         box.addLayout(row)
-        box.addWidget(QLabel(f"Сборка: {self.active_instance().get('name')} · Minecraft {self.active_instance().get('minecraft_version')}"))
+        box.addWidget(QLabel(self.text("build_info").format(name=self.active_instance().get("name"), version=self.active_instance().get("minecraft_version"))))
         layout.addWidget(search_card)
         self.mods_results_widget = QWidget()
         self.mods_results = QVBoxLayout(self.mods_results_widget)
         self.mods_results.setContentsMargins(0, 0, 0, 0)
         self.mods_results.setSpacing(10)
-        empty = QLabel("Введи название мода или ресурс-пака и нажми «Поиск».")
+        empty = QLabel(self.text("mods_empty"))
         empty.setProperty("class", "subtitle")
         self.mods_results.addWidget(empty)
         layout.addWidget(self.mods_results_widget)
@@ -730,7 +730,7 @@ class MainWindow(QMainWindow):
     def search_projects(self) -> None:
         query = self.mod_query.text().strip()
         if not query:
-            QMessageBox.information(self, "NOVAURA", "Сначала введи название проекта.")
+            QMessageBox.information(self, "NOVAURA", self.text("query_required"))
             return
         instance = dict(self.active_instance())
         project_type = self._selected_project_type()
@@ -766,7 +766,7 @@ class MainWindow(QMainWindow):
         for project in projects:
             source = project.get("_source", "Modrinth")
             name = project.get("title") or project.get("name") or "Unnamed project"
-            summary = project.get("description") or project.get("summary") or "Описание отсутствует."
+            summary = project.get("description") or project.get("summary") or self.text("no_description")
             downloads = project.get("downloads", 0)
             icon_url = (project.get("icon_url") or (project.get("logo") or {}).get("url") or "").strip()
             card = make_card()
@@ -782,7 +782,7 @@ class MainWindow(QMainWindow):
             description = QLabel(str(summary))
             description.setProperty("class", "subtitle")
             description.setWordWrap(True)
-            source_meta = QLabel(f"{source}  ·  {downloads:,} загрузок".replace(",", " "))
+            source_meta = QLabel(self.text("download_count").format(source=source, count=f"{downloads:,}".replace(",", " ")))
             source_meta.setStyleSheet("color:#be9bea;font-size:8pt;")
             title_desc.addWidget(heading)
             title_desc.addWidget(description)
@@ -815,11 +815,11 @@ class MainWindow(QMainWindow):
     def install_project(self, project: dict[str, Any], source: str, project_type: str) -> None:
         instance = self.active_instance()
         if project_type == "mod" and instance.get("loader", "Vanilla") == "Vanilla":
-            QMessageBox.information(self, "NOVAURA", "Большинству модов нужен загрузчик. Переключи сборку на Fabric, Forge, NeoForge или Quilt.")
+            QMessageBox.information(self, "NOVAURA", self.text("loader_required"))
             self.navigate("instances")
             return
         if project_type == "modpack" and source == "CurseForge":
-            QMessageBox.information(self, "NOVAURA", "Установка CurseForge-модпаков через manifest пока не поддерживается. Modrinth-модпаки импортируются целиком.")
+            QMessageBox.information(self, "NOVAURA", self.text("curseforge_pack_limit"))
             return
         def perform(report):
             if project_type == "modpack" and source == "Modrinth":
@@ -838,27 +838,27 @@ class MainWindow(QMainWindow):
             self.save()
             self.rebuild_ui()
             self.navigate("instances")
-            QMessageBox.information(self, "NOVAURA", f"Модпак импортирован в сборку «{self.active_instance().get('name')}».\nПроверь загрузчик и запусти игру.")
+            QMessageBox.information(self, "NOVAURA", self.text("import_modpack_success").format(name=self.active_instance().get("name")))
         else:
-            QMessageBox.information(self, "NOVAURA", f"Файл установлен:\n{path}")
+            QMessageBox.information(self, "NOVAURA", self.text("installed_file").format(path=path))
 
     def build_resources_page(self) -> QWidget:
         content, layout = self._page_content()
-        layout.addWidget(title_block(self.text("nav_resources"), "Все файлы ресурсов хранятся в папке выбранной сборки."))
+        layout.addWidget(title_block(self.text("nav_resources"), self.text("resources_intro")))
         instance = self.active_instance()
         banner = make_card("soft")
         banner_layout = QHBoxLayout(banner)
         banner_layout.setContentsMargins(18, 15, 18, 15)
-        banner_layout.addWidget(QLabel("АКТИВНАЯ СБОРКА"))
+        banner_layout.addWidget(QLabel(self.text("active_build")))
         banner_layout.addWidget(QLabel(f"{instance.get('name')}  ·  {instance.get('minecraft_version')}"), 1)
-        banner_layout.addWidget(self._button("Сменить сборку", False, lambda: self.navigate("instances")))
+        banner_layout.addWidget(self._button(self.text("change_instance"), False, lambda: self.navigate("instances")))
         layout.addWidget(banner)
         cards = QGridLayout()
         sections = [
-            ("mods", "Моды", "JAR-файлы модификаций", "Открыть папку", "mods"),
-            ("resourcepacks", "Ресурс-паки", "ZIP-паки текстур и звуков", "Открыть папку", "resourcepacks"),
-            ("shaderpacks", "Шейдеры", "Паки шейдеров для совместимых рендереров", "Открыть папку", "shaderpacks"),
-            ("config", "Конфигурация", "Настройки установленных модов", "Открыть папку", "config"),
+            ("mods", self.text("resource_mods"), self.text("resource_mods_desc"), self.text("open_folder"), "mods"),
+            ("resourcepacks", self.text("resourcepacks_label"), self.text("resourcepacks_desc"), self.text("open_folder"), "resourcepacks"),
+            ("shaderpacks", self.text("shaders_label"), self.text("shaders_desc"), self.text("open_folder"), "shaderpacks"),
+            ("config", self.text("config_label"), self.text("config_desc"), self.text("open_folder"), "config"),
         ]
         for index, (icon, name, desc, action, folder) in enumerate(sections):
             card = make_card()
@@ -880,8 +880,8 @@ class MainWindow(QMainWindow):
         import_card = make_card()
         import_layout = QVBoxLayout(import_card)
         import_layout.setContentsMargins(18, 17, 18, 17)
-        import_layout.addWidget(QLabel("Быстрый импорт"))
-        import_layout.addWidget(QLabel("Добавь .jar-мод или ZIP ресурс-пак / шейдер в активную сборку."))
+        import_layout.addWidget(QLabel(self.text("quick_import")))
+        import_layout.addWidget(QLabel(self.text("quick_import_desc")))
         import_row = QHBoxLayout()
         self.import_target_combo = self._combo(["mods", "resourcepacks", "shaderpacks"])
         import_row.addWidget(self.import_target_combo)
@@ -964,7 +964,7 @@ class MainWindow(QMainWindow):
         subtitle = QLabel("Sodium · Lithium · FerriteCore · EntityCulling")
         subtitle.setStyleSheet("font-size:16pt;font-weight:800;")
         subtitle.setWordWrap(True)
-        body = QLabel("Набор подбирает совместимые релизы из Modrinth для версии Minecraft и загрузчика активной сборки. Перед установкой убедись, что моды поддерживают твою конфигурацию.")
+        body = QLabel(self.text("optimize_intro"))
         body.setProperty("class", "subtitle")
         body.setWordWrap(True)
         intro_layout.addWidget(title)
@@ -973,10 +973,10 @@ class MainWindow(QMainWindow):
         intro_layout.addWidget(self._button("✦  " + self.text("install_performance"), True, self.install_performance_bundle), 0, Qt.AlignmentFlag.AlignLeft)
         layout.addWidget(intro)
         items = [
-            ("Sodium", "Рендеринг мира с более высокой производительностью.", "sodium"),
-            ("Lithium", "Оптимизация игровых тиков и логики.", "lithium"),
-            ("FerriteCore", "Снижение расхода оперативной памяти.", "ferrite-core"),
-            ("EntityCulling", "Не рендерит скрытые объекты без необходимости.", "entityculling"),
+            ("Sodium", self.text("sodium_desc"), "sodium"),
+            ("Lithium", self.text("lithium_desc"), "lithium"),
+            ("FerriteCore", self.text("ferrite_desc"), "ferrite-core"),
+            ("EntityCulling", self.text("entityculling_desc"), "entityculling"),
         ]
         for name, desc, slug in items:
             card = make_card()
@@ -998,9 +998,9 @@ class MainWindow(QMainWindow):
         memory_card = make_card()
         memory = QVBoxLayout(memory_card)
         memory.setContentsMargins(16, 15, 16, 15)
-        memory.addWidget(QLabel("Выделение памяти"))
-        memory.addWidget(QLabel("Используй настройки Java и RAM. Слишком большое значение может ухудшить отзывчивость системы."))
-        memory.addWidget(self._button("Открыть настройки Java", False, lambda: self.navigate("settings")), 0, Qt.AlignmentFlag.AlignLeft)
+        memory.addWidget(QLabel(self.text("memory_title")))
+        memory.addWidget(QLabel(self.text("memory_desc")))
+        memory.addWidget(self._button(self.text("open_java_settings"), False, lambda: self.navigate("settings")), 0, Qt.AlignmentFlag.AlignLeft)
         layout.addWidget(memory_card)
         layout.addStretch(1)
         return scroll_page(content)
@@ -1008,7 +1008,7 @@ class MainWindow(QMainWindow):
     def install_performance_bundle(self) -> None:
         instance = self.active_instance()
         if instance.get("loader", "Vanilla") == "Vanilla":
-            QMessageBox.information(self, "NOVAURA", "Для набора оптимизации выбери Fabric или Quilt. Переключить загрузчик можно на странице «Сборки».")
+            QMessageBox.information(self, "NOVAURA", self.text("optimize_no_loader"))
             self.navigate("instances")
             return
         projects = ["sodium", "lithium", "ferrite-core", "entityculling"]
@@ -1025,14 +1025,14 @@ class MainWindow(QMainWindow):
             return installed
         def done(installed):
             if not installed:
-                QMessageBox.warning(self, "NOVAURA", "Не найдено совместимых модов для этой сборки.")
+                QMessageBox.warning(self, "NOVAURA", self.text("no_compatible_mods"))
             else:
-                QMessageBox.information(self, "NOVAURA", "Установлено:\n" + "\n".join(installed))
+                QMessageBox.information(self, "NOVAURA", self.text("installed_list").format(items="\n".join(installed)))
         self._start_task("Установка оптимизационного набора…", perform, done)
 
     def build_accounts_page(self) -> QWidget:
         content, layout = self._page_content()
-        layout.addWidget(title_block(self.text("accounts_title"), "Токены хранятся в системном хранилище учётных данных; пароли в файлы лаунчера не записываются."))
+        layout.addWidget(title_block(self.text("accounts_title"), self.text("accounts_intro")))
         active = self.store.active_account()
         card = make_card("hero")
         row = QHBoxLayout(card)
@@ -1042,15 +1042,15 @@ class MainWindow(QMainWindow):
             self.skin_widget.set_skin_path("", active.get("name", "Player"))
         row.addWidget(self.skin_widget)
         details = QVBoxLayout()
-        details.addWidget(QLabel("ТЕКУЩИЙ ПРОФИЛЬ"))
-        name = QLabel(active.get("name", "Player") if active else "Нет профиля")
+        details.addWidget(QLabel(self.text("current_profile")))
+        name = QLabel(active.get("name", "Player") if active else self.text("no_profile"))
         name.setStyleSheet("font-size:17pt;font-weight:900;")
-        provider = QLabel(active.get("provider", "Офлайн") if active else "Добавь игровой аккаунт")
+        provider = QLabel(active.get("provider", self.text("offline")) if active else self.text("add_account_prompt"))
         provider.setProperty("class", "subtitle")
         provider.setWordWrap(True)
         details.addWidget(name)
         details.addWidget(provider)
-        details.addWidget(QLabel("Офлайн-профили подходят для одиночной игры и серверов, разрешающих offline-mode. Они не подтверждают лицензию."))
+        details.addWidget(QLabel(self.text("offline_disclaimer")))
         row.addLayout(details, 1)
         layout.addWidget(card)
         login_grid = QGridLayout()
@@ -1064,7 +1064,7 @@ class MainWindow(QMainWindow):
             button.setMinimumHeight(49)
             login_grid.addWidget(button, index // 2, index % 2)
         layout.addLayout(login_grid)
-        layout.addWidget(QLabel("Сохранённые аккаунты"))
+        layout.addWidget(QLabel(self.text("saved_accounts")))
         for account in self.store.list_accounts():
             account_card = make_card()
             account_row = QHBoxLayout(account_card)
@@ -1085,13 +1085,13 @@ class MainWindow(QMainWindow):
                 active_label.setStyleSheet("color:#6ff0bc;")
                 account_row.addWidget(active_label)
             else:
-                account_row.addWidget(self._button("Сделать активным", False,
+                account_row.addWidget(self._button(self.text("make_active"), False,
                                                    lambda checked=False, uid=account["uuid"]: self.switch_account(uid)))
             account_row.addWidget(self._button("×", False, lambda checked=False, uid=account["uuid"]: self.remove_account(uid)))
             layout.addWidget(account_card)
         if active and active.get("skin_url"):
             skin_url = active["skin_url"]
-            self._start_task("Загрузка скина…", lambda report: self._download_skin(skin_url, report),
+            self._start_task(self.text("skin_download"), lambda report: self._download_skin(skin_url, report),
                              on_success=lambda path: self.skin_widget.set_skin_path(path, active.get("name", "Player")),
                              show_error=False)
         layout.addStretch(1)
@@ -1104,7 +1104,7 @@ class MainWindow(QMainWindow):
         response.raise_for_status()
         data = response.content
         if len(data) > 2 * 1024 * 1024:
-            raise ValueError("Файл скина неожиданно большой.")
+            raise ValueError(self.text("skin_too_big"))
         skin_cache = app_data_dir() / "skins"
         skin_cache.mkdir(parents=True, exist_ok=True)
         path = skin_cache / (hashlib.sha256(url.encode("utf-8")).hexdigest() + ".png")
@@ -1113,7 +1113,7 @@ class MainWindow(QMainWindow):
 
     def add_offline_account(self) -> None:
         current = self.store.active_account()
-        name, ok = QInputDialog.getText(self, "NOVAURA", "Ник (1–16 символов):", text=current.get("name", "") if current else "")
+        name, ok = QInputDialog.getText(self, "NOVAURA", self.text("choose_nickname"), text=current.get("name", "") if current else "")
         if not ok:
             return
         try:
@@ -1129,26 +1129,26 @@ class MainWindow(QMainWindow):
         if not client_id:
             QMessageBox.information(
                 self, "NOVAURA",
-                "В настройках укажи Microsoft Client ID и Redirect URI, зарегистрированный в Microsoft Entra. "
+                self.text("microsoft_setup_needed")
                 "Для Minecraft API приложению может потребоваться одобрение Microsoft."
             )
             self.navigate("settings")
             return
         self._start_task(
-            "Ожидание входа Microsoft в браузере…",
+            self.text("waiting_microsoft"),
             lambda report: self.store.login_microsoft(client_id, redirect_uri),
             on_success=lambda account: self._account_added(account),
         )
 
     def add_ely_account(self) -> None:
         dialog = QDialog(self)
-        dialog.setWindowTitle("Вход Ely.by")
+        dialog.setWindowTitle(self.text("ely_login_title"))
         form = QFormLayout(dialog)
         username = QLineEdit()
         password = QLineEdit()
         password.setEchoMode(QLineEdit.EchoMode.Password)
-        form.addRow("Логин или email:", username)
-        form.addRow("Пароль:", password)
+        form.addRow(self.text("login_email"), username)
+        form.addRow(self.text("password"), password)
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
         buttons.accepted.connect(dialog.accept)
         buttons.rejected.connect(dialog.reject)
@@ -1156,7 +1156,7 @@ class MainWindow(QMainWindow):
         if dialog.exec() != QDialog.DialogCode.Accepted:
             return
         self._start_task(
-            "Вход в Ely.by…",
+            self.text("waiting_ely"),
             lambda report: self.store.login_ely(username.text(), password.text()),
             on_success=lambda account: self._account_added(account),
         )
@@ -1164,7 +1164,7 @@ class MainWindow(QMainWindow):
     def _account_added(self, account: dict[str, Any]) -> None:
         self.rebuild_ui()
         self.navigate("accounts")
-        QMessageBox.information(self, "NOVAURA", f"Аккаунт {account.get('name')} добавлен.")
+        QMessageBox.information(self, "NOVAURA", self.text("account_added").format(name=account.get("name")))
 
     def switch_account(self, account_uuid: str) -> None:
         try:
@@ -1175,7 +1175,7 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "NOVAURA", str(exc))
 
     def remove_account(self, account_uuid: str) -> None:
-        answer = QMessageBox.question(self, "NOVAURA", "Удалить профиль из лаунчера?")
+        answer = QMessageBox.question(self, "NOVAURA", self.text("delete_profile_confirm"))
         if answer != QMessageBox.StandardButton.Yes:
             return
         self.store.remove(account_uuid)
@@ -1186,7 +1186,7 @@ class MainWindow(QMainWindow):
 
     def build_settings_page(self) -> QWidget:
         content, layout = self._page_content()
-        layout.addWidget(title_block(self.text("settings_title"), "Темы, Java, память и интеграции. Секреты API не следует помещать в конфигурацию или репозиторий."))
+        layout.addWidget(title_block(self.text("settings_title"), self.text("settings_intro")))
         appearance = make_card()
         app_layout = QGridLayout(appearance)
         app_layout.setContentsMargins(17, 16, 17, 17)
@@ -1232,12 +1232,12 @@ class MainWindow(QMainWindow):
         preset_layout = QGridLayout(preset_card)
         preset_layout.setContentsMargins(17, 13, 17, 13)
         preset_layout.setHorizontalSpacing(10)
-        preset_layout.addWidget(QLabel("Сохранённые темы"), 0, 0)
+        preset_layout.addWidget(QLabel(self.text("saved_themes")), 0, 0)
         self.preset_combo = self._combo(sorted(self.config.get("theme_presets", {}).keys()))
         preset_layout.addWidget(self.preset_combo, 1, 0)
-        preset_layout.addWidget(self._button("Сохранить как пресет", False, self.save_theme_preset), 1, 1)
-        preset_layout.addWidget(self._button("Применить", False, self.apply_theme_preset), 1, 2)
-        preset_layout.addWidget(self._button("Удалить", False, self.delete_theme_preset), 1, 3)
+        preset_layout.addWidget(self._button(self.text("save_preset"), False, self.save_theme_preset), 1, 1)
+        preset_layout.addWidget(self._button(self.text("apply_preset"), False, self.apply_theme_preset), 1, 2)
+        preset_layout.addWidget(self._button(self.text("delete_preset"), False, self.delete_theme_preset), 1, 3)
         layout.addWidget(preset_card)
 
         java_card = make_card()
@@ -1312,7 +1312,7 @@ class MainWindow(QMainWindow):
         self.preset_combo.blockSignals(False)
 
     def save_theme_preset(self) -> None:
-        name, ok = QInputDialog.getText(self, "NOVAURA", "Название пресета темы:")
+        name, ok = QInputDialog.getText(self, "NOVAURA", self.text("preset_title"))
         name = name.strip()
         if not ok or not name:
             return
@@ -1326,7 +1326,7 @@ class MainWindow(QMainWindow):
         name = self.preset_combo.currentText()
         preset = self.config.get("theme_presets", {}).get(name)
         if not preset:
-            QMessageBox.information(self, "NOVAURA", "Сначала выбери сохранённый пресет.")
+            QMessageBox.information(self, "NOVAURA", self.text("preset_required"))
             return
         self.theme_combo.setCurrentText(str(preset.get("theme", "violet")))
         self.accent_input.setText(str(preset.get("accent", PALETTES["violet"])))
@@ -1347,7 +1347,7 @@ class MainWindow(QMainWindow):
         if name not in self.config.get("theme_presets", {}):
             QMessageBox.information(self, "NOVAURA", "Сначала выбери сохранённый пресет.")
             return
-        answer = QMessageBox.question(self, "NOVAURA", f"Удалить пресет «{name}»?")
+        answer = QMessageBox.question(self, "NOVAURA", self.text("delete_preset_confirm").format(name=name))
         if answer != QMessageBox.StandardButton.Yes:
             return
         self.config["theme_presets"].pop(name, None)
@@ -1356,18 +1356,18 @@ class MainWindow(QMainWindow):
         self._set_status(f"Удалён пресет «{name}»")
 
     def choose_background(self) -> None:
-        path, _ = QFileDialog.getOpenFileName(self, "Фоновое изображение", str(Path.home()), "Images (*.png *.jpg *.jpeg *.webp)")
+        path, _ = QFileDialog.getOpenFileName(self, self.text("choose_background"), str(Path.home()), "Images (*.png *.jpg *.jpeg *.webp)")
         if path:
             self.background_label.setText(Path(path).name)
             self.config["pending_background"] = path
 
     def choose_java(self) -> None:
-        path, _ = QFileDialog.getOpenFileName(self, "Выбрать Java", str(Path.home()), "Java executable (java.exe javaw.exe);;All files (*)")
+        path, _ = QFileDialog.getOpenFileName(self, self.text("choose_java"), str(Path.home()), "Java executable (java.exe javaw.exe);;All files (*)")
         if path:
             self.java_input.setText(path)
 
     def choose_game_root(self) -> None:
-        path = QFileDialog.getExistingDirectory(self, "Папка игровых сборок", self.game_root_input.text())
+        path = QFileDialog.getExistingDirectory(self, self.text("choose_game_folder"), self.game_root_input.text())
         if path:
             self.game_root_input.setText(path)
 
@@ -1376,20 +1376,20 @@ class MainWindow(QMainWindow):
         language = "ru" if self.language_combo.currentText() == "Русский" else "en"
         accent = self.accent_input.text().strip()
         if not (accent.startswith("#") and len(accent) in {4, 7}):
-            QMessageBox.warning(self, "NOVAURA", "Укажи цвет в формате HEX, например #e84dff.")
+            QMessageBox.warning(self, "NOVAURA", self.text("invalid_color"))
             return
         java = self.java_input.text().strip()
         if java and not Path(java).is_file():
-            QMessageBox.warning(self, "NOVAURA", "Файл Java не найден. Проверь путь или оставь поле пустым для автоматического runtime.")
+            QMessageBox.warning(self, "NOVAURA", self.text("java_not_found"))
             return
         game_folder = Path(self.game_root_input.text().strip()).expanduser()
         if not str(game_folder):
-            QMessageBox.warning(self, "NOVAURA", "Укажи папку для игровых сборок.")
+            QMessageBox.warning(self, "NOVAURA", self.text("game_folder_required"))
             return
         try:
             game_folder.mkdir(parents=True, exist_ok=True)
         except OSError as exc:
-            QMessageBox.warning(self, "NOVAURA", f"Не удалось создать папку: {exc}")
+            QMessageBox.warning(self, "NOVAURA", self.text("folder_create_error").format(error=exc))
             return
         self.config.update({
             "language": language,
@@ -1426,7 +1426,7 @@ class MainWindow(QMainWindow):
             QMessageBox.information(self, "NOVAURA", self.text("save_success"))
 
     def reset_settings(self) -> None:
-        answer = QMessageBox.question(self, "NOVAURA", "Сбросить тему и настройки лаунчера? Список игровых сборок и аккаунты сохранятся.")
+        answer = QMessageBox.question(self, "NOVAURA", self.text("reset_settings_confirm"))
         if answer != QMessageBox.StandardButton.Yes:
             return
         original_instances = self.config.get("instances", default_config()["instances"])
