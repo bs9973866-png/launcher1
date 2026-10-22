@@ -1130,7 +1130,6 @@ class MainWindow(QMainWindow):
             QMessageBox.information(
                 self, "NOVAURA",
                 self.text("microsoft_setup_needed")
-                "Для Minecraft API приложению может потребоваться одобрение Microsoft."
             )
             self.navigate("settings")
             return
