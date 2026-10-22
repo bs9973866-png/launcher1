@@ -39,7 +39,7 @@ def asset_path(name: str) -> Path:
     return Path(__file__).resolve().parent.parent / "assets" / name
 
 
-def make_card(parent=None, role: str = "surface") -> QFrame:
+def make_card(role: str = "surface", parent=None) -> QFrame:
     frame = QFrame(parent)
     frame.setProperty("role", role)
     frame.setObjectName("surfaceCard")
