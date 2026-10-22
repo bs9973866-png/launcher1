@@ -36,6 +36,7 @@ def default_config() -> dict[str, Any]:
         "ui_scale": 1.0,
         "corner_radius": 18,
         "animations": True,
+        "theme_presets": {},
         "background_image": "",
         "game_root": str(root),
         "java_path": "",

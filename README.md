@@ -9,7 +9,7 @@ A customizable Windows desktop launcher for Minecraft: Java Edition, built with 
 - Live Mojang version manifest, vanilla installation and launch, plus version-aware loader installation through minecraft-launcher-lib (Fabric, Forge, NeoForge and Quilt when supported).
 - JVM executable path, memory allocation, custom JVM arguments, game root, opacity, UI scale, card radius, optional background image and saved settings.
 - Offline nickname profiles, Microsoft OAuth with PKCE through the system browser, and Ely.by Yggdrasil login. Account tokens are stored via the OS keyring instead of the JSON settings file.
-- Modrinth search and version-compatible downloads for mods, resource packs and shader packs; Modrinth .mrpack installation validates manifest hashes and installs client files/overrides.
+- Modrinth search and version-compatible downloads with transfer-speed/progress indicators and cancellation for network streams; Modrinth .mrpack installation validates manifest hashes and installs client files/overrides.
 - CurseForge search/download endpoints when a user supplies their own API key as CURSEFORGE_API_KEY.
 - Resource folder shortcuts, imports and a shareable instance ZIP format that includes selected game folders and a JSON manifest.
 - A one-click performance bundle that searches Modrinth for Sodium, Lithium, FerriteCore and EntityCulling for the active loader/version.
@@ -82,7 +82,7 @@ Do not commit that value to source control. Availability of direct download link
 - Microsoft sign-in depends on the user's Entra app configuration and Microsoft's current app eligibility rules.
 - Ely.by uses its Yggdrasil-compatible login flow and downloads an integrity-checked authlib-injector agent for the game session; behavior can still vary by Minecraft version and loader.
 - The skin panel renders a small isometric head preview only when the account API supplies an accessible skin texture; it is not a full-body, rotatable 3D model editor.
-- Catalog download streams and authlib-injector downloads can be cancelled; minecraft-launcher-lib does not expose hard cancellation for every in-progress Mojang asset operation.
+- Catalog download streams and authlib-injector downloads can be cancelled; minecraft-launcher-lib does not expose hard cancellation for every in-progress Mojang asset operation. User-created theme presets persist locally in the launcher settings.
 - Export includes selected instance data folders (mods, config, resourcepacks, shaderpacks and saves); it does not include Minecraft libraries/assets or automatically bundle every external dependency.
 
 ## Tests

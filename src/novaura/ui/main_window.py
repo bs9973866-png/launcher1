@@ -1228,6 +1228,18 @@ class MainWindow(QMainWindow):
         app_layout.addLayout(bg_row, 5, 1, 1, 2)
         layout.addWidget(appearance)
 
+        preset_card = make_card("soft")
+        preset_layout = QGridLayout(preset_card)
+        preset_layout.setContentsMargins(17, 13, 17, 13)
+        preset_layout.setHorizontalSpacing(10)
+        preset_layout.addWidget(QLabel("Сохранённые темы"), 0, 0)
+        self.preset_combo = self._combo(sorted(self.config.get("theme_presets", {}).keys()))
+        preset_layout.addWidget(self.preset_combo, 1, 0)
+        preset_layout.addWidget(self._button("Сохранить как пресет", False, self.save_theme_preset), 1, 1)
+        preset_layout.addWidget(self._button("Применить", False, self.apply_theme_preset), 1, 2)
+        preset_layout.addWidget(self._button("Удалить", False, self.delete_theme_preset), 1, 3)
+        layout.addWidget(preset_card)
+
         java_card = make_card()
         java_form = QGridLayout(java_card)
         java_form.setContentsMargins(17, 16, 17, 17)
@@ -1279,6 +1291,69 @@ class MainWindow(QMainWindow):
         layout.addLayout(footer_buttons)
         layout.addStretch(1)
         return scroll_page(content)
+
+    def _current_theme_values(self) -> dict[str, Any]:
+        return {
+            "theme": self.theme_combo.currentText(),
+            "accent": self.accent_input.text().strip(),
+            "ui_scale": self.scale_slider.value() / 100,
+            "corner_radius": self.radius_slider.value(),
+            "window_opacity": self.opacity_slider.value() / 100,
+            "animations": self.animations_check.isChecked(),
+            "background_image": self.config.get("pending_background", self.config.get("background_image", "")),
+        }
+
+    def _refresh_preset_combo(self, selected: str = "") -> None:
+        self.preset_combo.blockSignals(True)
+        self.preset_combo.clear()
+        self.preset_combo.addItems(sorted(self.config.get("theme_presets", {}).keys()))
+        if selected:
+            self.preset_combo.setCurrentText(selected)
+        self.preset_combo.blockSignals(False)
+
+    def save_theme_preset(self) -> None:
+        name, ok = QInputDialog.getText(self, "NOVAURA", "Название пресета темы:")
+        name = name.strip()
+        if not ok or not name:
+            return
+        presets = self.config.setdefault("theme_presets", {})
+        presets[name] = self._current_theme_values()
+        self.save()
+        self._refresh_preset_combo(name)
+        self._set_status(f"Сохранён пресет «{name}»")
+
+    def apply_theme_preset(self) -> None:
+        name = self.preset_combo.currentText()
+        preset = self.config.get("theme_presets", {}).get(name)
+        if not preset:
+            QMessageBox.information(self, "NOVAURA", "Сначала выбери сохранённый пресет.")
+            return
+        self.theme_combo.setCurrentText(str(preset.get("theme", "violet")))
+        self.accent_input.setText(str(preset.get("accent", PALETTES["violet"])))
+        self.scale_slider.setValue(int(float(preset.get("ui_scale", 1.0)) * 100))
+        self.radius_slider.setValue(int(preset.get("corner_radius", 18)))
+        self.opacity_slider.setValue(int(float(preset.get("window_opacity", 1.0)) * 100))
+        self.animations_check.setChecked(bool(preset.get("animations", True)))
+        background = str(preset.get("background_image", ""))
+        self.background_label.setText(Path(background).name or "NOVAURA default")
+        if background:
+            self.config["pending_background"] = background
+        else:
+            self.config.pop("pending_background", None)
+        self.save_settings()
+
+    def delete_theme_preset(self) -> None:
+        name = self.preset_combo.currentText()
+        if name not in self.config.get("theme_presets", {}):
+            QMessageBox.information(self, "NOVAURA", "Сначала выбери сохранённый пресет.")
+            return
+        answer = QMessageBox.question(self, "NOVAURA", f"Удалить пресет «{name}»?")
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+        self.config["theme_presets"].pop(name, None)
+        self.save()
+        self._refresh_preset_combo()
+        self._set_status(f"Удалён пресет «{name}»")
 
     def choose_background(self) -> None:
         path, _ = QFileDialog.getOpenFileName(self, "Фоновое изображение", str(Path.home()), "Images (*.png *.jpg *.jpeg *.webp)")

@@ -5,6 +5,7 @@ import json
 import os
 import re
 import shutil
+import time
 import zipfile
 from pathlib import Path, PurePosixPath
 from typing import Any, Callable
@@ -104,20 +105,37 @@ def download_project(
     target = directory / filename
     temporary = target.with_suffix(target.suffix + ".part")
     report(f"Скачивание {filename}", 0)
-    with requests.get(url, headers={"User-Agent": USER_AGENT}, stream=True, timeout=(15, 60)) as response:
-        response.raise_for_status()
-        total = int(response.headers.get("Content-Length", "0") or 0)
-        downloaded = 0
-        with temporary.open("wb") as stream:
-            for chunk in response.iter_content(chunk_size=1024 * 256):
-                _check_cancel(report)
-                if not chunk:
-                    continue
-                stream.write(chunk)
-                downloaded += len(chunk)
-                percent = int(downloaded * 100 / total) if total > 0 else -1
-                report(f"Скачивание {filename} ({downloaded // (1024 * 1024)} МБ)", percent)
-    temporary.replace(target)
+    hashes = file_info.get("hashes") or {}
+    expected_sha1 = str(hashes.get("sha1") or "").lower()
+    expected_sha512 = str(hashes.get("sha512") or "").lower()
+    digest_sha1 = hashlib.sha1()
+    digest_sha512 = hashlib.sha512()
+    started = time.monotonic()
+    try:
+        with requests.get(url, headers={"User-Agent": USER_AGENT}, stream=True, timeout=(15, 60)) as response:
+            response.raise_for_status()
+            total = int(response.headers.get("Content-Length", "0") or 0)
+            downloaded = 0
+            with temporary.open("wb") as stream:
+                for chunk in response.iter_content(chunk_size=1024 * 256):
+                    _check_cancel(report)
+                    if not chunk:
+                        continue
+                    stream.write(chunk)
+                    digest_sha1.update(chunk)
+                    digest_sha512.update(chunk)
+                    downloaded += len(chunk)
+                    percent = int(downloaded * 100 / total) if total > 0 else -1
+                    speed = downloaded / (1024 * 1024 * max(.1, time.monotonic() - started))
+                    report(f"Скачивание {filename} · {speed:.1f} МБ/с", percent)
+        if expected_sha1 and digest_sha1.hexdigest().lower() != expected_sha1:
+            raise RuntimeError(f"Контрольная сумма SHA-1 не совпала для {filename}.")
+        if expected_sha512 and digest_sha512.hexdigest().lower() != expected_sha512:
+            raise RuntimeError(f"Контрольная сумма SHA-512 не совпала для {filename}.")
+        temporary.replace(target)
+    except Exception:
+        temporary.unlink(missing_ok=True)
+        raise
     report(f"Установлено: {filename}", 100)
     return target
 
@@ -158,6 +176,7 @@ def install_modrinth_modpack(
     archive_path = root / ".novaura-import.mrpack"
     temporary = archive_path.with_suffix(".mrpack.part")
     report("Скачивание архива модпака…", 0)
+    archive_started = time.monotonic()
     try:
         with requests.get(package_url, stream=True, timeout=(15, 60), headers={"User-Agent": USER_AGENT}) as response:
             response.raise_for_status()
@@ -169,7 +188,8 @@ def install_modrinth_modpack(
                     if chunk:
                         stream.write(chunk)
                         downloaded += len(chunk)
-                        report("Скачивание архива модпака", int(downloaded * 100 / length) if length else -1)
+                        speed = downloaded / (1024 * 1024 * max(.1, time.monotonic() - archive_started))
+                        report(f"Скачивание архива модпака · {speed:.1f} МБ/с", int(downloaded * 100 / length) if length else -1)
         temporary.replace(archive_path)
         with zipfile.ZipFile(archive_path) as archive:
             names = archive.namelist()
@@ -340,16 +360,22 @@ def install_curseforge_project(
     target = target_dir / filename
     temporary = target.with_suffix(target.suffix + ".part")
     report(f"Скачивание {filename}", 0)
-    with requests.get(url, headers={"User-Agent": USER_AGENT}, stream=True, timeout=(15, 60)) as response_file:
-        response_file.raise_for_status()
-        length = int(response_file.headers.get("Content-Length", "0") or 0)
-        downloaded = 0
-        with temporary.open("wb") as stream:
-            for chunk in response_file.iter_content(262144):
-                _check_cancel(report)
-                if chunk:
-                    stream.write(chunk)
-                    downloaded += len(chunk)
-                    report(f"Скачивание {filename}", int(downloaded * 100 / length) if length else -1)
-    temporary.replace(target)
+    started = time.monotonic()
+    try:
+        with requests.get(url, headers={"User-Agent": USER_AGENT}, stream=True, timeout=(15, 60)) as response_file:
+            response_file.raise_for_status()
+            length = int(response_file.headers.get("Content-Length", "0") or 0)
+            downloaded = 0
+            with temporary.open("wb") as stream:
+                for chunk in response_file.iter_content(262144):
+                    _check_cancel(report)
+                    if chunk:
+                        stream.write(chunk)
+                        downloaded += len(chunk)
+                        speed = downloaded / (1024 * 1024 * max(.1, time.monotonic() - started))
+                        report(f"Скачивание {filename} · {speed:.1f} МБ/с", int(downloaded * 100 / length) if length else -1)
+        temporary.replace(target)
+    except Exception:
+        temporary.unlink(missing_ok=True)
+        raise
     return target
